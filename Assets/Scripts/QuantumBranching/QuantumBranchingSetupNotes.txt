@@ -1,0 +1,31 @@
+Quantum Branching Prototype Notes
+
+Primary scene:
+- Assets/Scenes/Scene_Laboratory.unity
+
+Generated setup:
+- A scene builder is available at Quantum Branching/Build Lab Prototype.
+- The builder creates a root named QuantumBranchingPrototype and wires the prototype into the existing lab rooms.
+
+Prototype structure:
+- Room01 becomes the pre-split experiment hub.
+- Room02 through Room05 become the four branch worlds.
+- Main Camera keeps the existing movement setup and gains an E-key interactor.
+
+If the builder has not been run yet:
+- Open Assets/Scenes/Scene_Laboratory.unity.
+- Run Quantum Branching/Build Lab Prototype.
+
+If you rerun the builder:
+- It replaces the previously generated QuantumBranchingPrototype root.
+- It keeps the imported lab environment content intact.
+
+Expected generated objects:
+- QuantumBranchingPrototype
+- QuantumBranchingManager
+- QuantumExperimentNode
+- BranchPortalRoot
+- BranchWorld_01 through BranchWorld_04
+- EntangledCore and EntangledMonitor displays inside each branch room
+
+Manual follow-up should be unnecessary for the default generated layout.

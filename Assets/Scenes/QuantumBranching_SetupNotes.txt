@@ -1,0 +1,113 @@
+Quantum Branching Prototype - Stage 1 Setup Notes
+
+Chosen scene:
+- Assets/Scenes/Scene_Laboratory.unity
+- This is the only authored lab scene under Assets/Scenes and is the clearest prototype target.
+
+Existing player object found:
+- No dedicated player object found from scene/script inspection.
+- Current controllable viewpoint appears to be Main Camera with FreeCamera attached.
+
+Existing camera found:
+- Yes
+- Scene object: Main Camera
+- Existing script on camera: FreeCamera
+
+Recommended central experiment area:
+- Room01
+- Reason: Room01 appears structurally central and much emptier than Rooms 02-06.
+- Room01 has Lighting, Ceiling, Walls, Doors, and Floors groups but no obvious Furniture/Props groups, making it the safest space for a controlled pre-split experiment node.
+
+Recommended branch layout strategy:
+- Strategy A: four radial branch chambers using the existing lab rooms
+- Use Room01 as the pre-split hub / experiment chamber
+- Use Room02, Room03, Room04, and Room05 as the four post-split branch worlds
+- Keep Room06 unused for now unless later needed as overflow or staging
+
+Recommended quantum event object:
+- No clearly placed experiment prop could be identified with confidence from text-only scene inspection.
+- Safest recommendation: create or place one focal experiment device in Room01
+- Preferred existing prefab candidates if needed:
+  - Assets/Laboratory/Prefabs/Props/Hardware/Bioreactor01.prefab
+  - Assets/Laboratory/Prefabs/Props/Hardware/Bioreactor01b.prefab
+  - Assets/Laboratory/Prefabs/Props/Optics/Unit01.prefab
+  - Assets/Laboratory/Prefabs/Props/Optics/Laser01.prefab
+- Fallback: use a small placeholder built from primitives plus a point light
+
+Recommended entangled object pair:
+- No specific already-placed pair could be identified confidently from scene YAML alone.
+- Best low-risk pair using existing lab asset types:
+  - Object A: central experiment core / reactor object in Room01 or each branch outcome area
+  - Object B: lab monitor / data display using Assets/Laboratory/Prefabs/Props/Hardware/Monitor01.prefab
+- Alternate existing prefab pair if a stronger sci-fi read is needed:
+  - Bioreactor01 + Monitor01
+  - ServerBay/ServerRack + Monitor01
+
+What appears to be missing and will likely need to be created later:
+- A clear QuantumExperimentNode in Room01
+- A lightweight E-interaction flow for the measurement event
+- Four branch containers / activation points
+- A clearly readable entangled monitor/display relationship
+- Possibly a safer minimal player interaction layer if Main Camera + FreeCamera is not sufficient in play
+
+Stage 1 recommendation for next step:
+- Stage 2 should create only empty or near-empty organizational objects:
+  - QuantumBranching_Root
+  - PreSplitLab
+  - QuantumExperimentNode
+  - BranchRoot
+  - BranchWorld_01
+  - BranchWorld_02
+  - BranchWorld_03
+  - BranchWorld_04
+- Do not duplicate room content yet.
+
+Stage 3 script status:
+- Runtime scripts now exist under Assets/Scripts/QuantumBranching/
+- Primary Stage 3 scripts:
+  - QuantumEventTrigger.cs
+  - BranchWorld.cs
+  - EntangledPair.cs
+  - BranchVisualManager.cs
+  - SimplePlayerInteractor.cs
+- Supporting helper scripts also present:
+  - IQuantumInteractable.cs
+  - QuantumBranchingTypes.cs
+  - QuantumBranchPortal.cs
+
+Stage 3 safe hookup note:
+- Safe obvious Stage 3 hookups are now present in the scene:
+  - QuantumBranching_Root -> BranchVisualManager
+  - QuantumExperimentNode -> QuantumEventTrigger
+  - BranchWorld_01..04 -> BranchWorld
+  - Main Camera -> SimplePlayerInteractor
+- EntangledPair should wait until Stage 4 when actual paired branch objects exist.
+
+Stage 3 remaining manual references:
+- BranchVisualManager:
+  - hubSpawnPoint not assigned yet
+  - branchPortalRoot not assigned yet
+  - hubStatusLabels empty
+- QuantumEventTrigger:
+  - rotatingCore not assigned yet
+  - no visible experiment mesh/light children exist yet
+- BranchWorld_01..04:
+  - roomRoot not assigned yet
+  - spawnPoint not assigned yet
+  - no title labels, tint renderers, or entangled pairs assigned yet
+
+Stage 4 runtime branch-content note:
+- BranchWorld now auto-assigns rooms at runtime if roomRoot is still empty:
+  - BranchWorld_01 -> Room02
+  - BranchWorld_02 -> Room03
+  - BranchWorld_03 -> Room04
+  - BranchWorld_04 -> Room05
+- Each branch now builds a lightweight runtime outcome rig inside its room when Play starts.
+- Outcome mapping:
+  - Stabilized -> single stable core + single stable monitor
+  - Destabilized -> tilted unstable core + warning monitor
+  - Duplicated -> two mirrored cores + two mirrored monitors
+  - NullState -> residual null field + dark/null monitor
+- Entanglement rule is authored and deterministic per branch outcome.
+- QuantumEventTrigger now builds a simple runtime experiment device and interaction collider if none is wired manually.
+- This keeps Stage 4 low-risk by avoiding large scene duplication or heavy scene-YAML restructuring.
