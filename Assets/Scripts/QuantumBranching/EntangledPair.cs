@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 namespace QuantumBranching
@@ -30,9 +30,6 @@ namespace QuantumBranching
         [Header("Authored States")]
         [SerializeField] private EntanglementVisualState[] authoredStates = new EntanglementVisualState[0];
 
-        private bool warnedAboutMissingAnchors;
-        private bool warnedAboutMissingAuthoredStates;
-
         public void Configure(
             Transform primary,
             Transform secondary,
@@ -51,20 +48,8 @@ namespace QuantumBranching
             authoredStates = states;
         }
 
-        private void Awake()
+        private void Start()
         {
-            if ((primaryAnchor == null || secondaryAnchor == null) && !warnedAboutMissingAnchors)
-            {
-                Debug.LogWarning($"{nameof(EntangledPair)} on {name} is missing one or both anchor references.", this);
-                warnedAboutMissingAnchors = true;
-            }
-
-            if ((authoredStates == null || authoredStates.Length == 0) && !warnedAboutMissingAuthoredStates)
-            {
-                Debug.LogWarning($"{nameof(EntangledPair)} on {name} has no authored states configured.", this);
-                warnedAboutMissingAuthoredStates = true;
-            }
-
             HideAllVisuals();
             UpdateLine();
         }
@@ -99,7 +84,10 @@ namespace QuantumBranching
 
             for (var index = 0; index < selectedState.tintRenderers.Length; index++)
             {
-                selectedState.tintRenderers[index].ApplyEmission(selectedState.signalColor, 2.5f);
+                if (selectedState.tintRenderers[index] != null)
+                {
+                    selectedState.tintRenderers[index].ApplyEmission(selectedState.signalColor, 1.8f);
+                }
             }
 
             for (var index = 0; index < selectedState.tintLights.Length; index++)
@@ -172,6 +160,11 @@ namespace QuantumBranching
 
         private static void SetObjectsActive(GameObject[] targets, bool shouldBeActive)
         {
+            if (targets == null)
+            {
+                return;
+            }
+
             for (var index = 0; index < targets.Length; index++)
             {
                 if (targets[index] != null)

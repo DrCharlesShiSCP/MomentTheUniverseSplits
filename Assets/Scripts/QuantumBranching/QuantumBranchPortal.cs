@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace QuantumBranching
 {
@@ -13,17 +13,8 @@ namespace QuantumBranching
         [Header("Prompt")]
         [SerializeField] private string interactionPrompt = "Press E to Enter Branch";
 
-        private void Awake()
+        private void Start()
         {
-            if (requiresSplit && visualManager == null)
-            {
-                Debug.LogWarning($"{nameof(QuantumBranchPortal)} on {name} requires a {nameof(BranchVisualManager)} reference because split gating is enabled.", this);
-            }
-
-            if (explicitDestination == null && branchDestination == null && visualManager == null)
-            {
-                Debug.LogWarning($"{nameof(QuantumBranchPortal)} on {name} has no destination configured.", this);
-            }
         }
 
         public void Configure(
@@ -88,3 +79,4 @@ namespace QuantumBranching
         }
     }
 }
+

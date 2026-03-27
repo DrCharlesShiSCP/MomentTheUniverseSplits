@@ -198,6 +198,11 @@ public class FreeCamera : MonoBehaviour
 
         movementRoot = characterController.transform;
 
+        if (movementRoot.GetComponent<QuantumBranching.CharacterControllerDoorPusher>() == null)
+        {
+            movementRoot.gameObject.AddComponent<QuantumBranching.CharacterControllerDoorPusher>();
+        }
+
         var cameraLocalHeight = Mathf.Clamp(eyeHeight, 0.6f, capsuleHeight - 0.1f);
         transform.localPosition = new Vector3(0f, cameraLocalHeight, 0f);
         movementRoot.rotation = Quaternion.Euler(0f, movementRoot.eulerAngles.y, 0f);

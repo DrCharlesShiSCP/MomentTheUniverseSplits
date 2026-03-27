@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace QuantumBranching
 {
@@ -26,10 +26,29 @@ namespace QuantumBranching
         public BranchOutcomeType OutcomeType => outcomeType;
         public Transform SpawnPoint => spawnPoint;
         public string BranchTitle => branchTitle;
+        public string ExpectedRoomName => branchId switch
+        {
+            BranchID.Branch01 => "Room02",
+            BranchID.Branch02 => "Room03",
+            BranchID.Branch03 => "Room04",
+            _ => "Room05"
+        };
 
         private void Awake()
         {
             EnsureRuntimeBranchSetup();
+        }
+
+        private void Start()
+        {
+            EnsureRuntimeBranchSetup();
+
+            var manager = FindFirstObjectByType<BranchVisualManager>();
+            if (manager != null && !manager.IsSplitTriggered)
+            {
+                SetVisible(false);
+                Debug.Log($"{nameof(BranchWorld)} {branchTitle} enforced hidden startup state in Start().", this);
+            }
         }
 
         public void Configure(
@@ -54,6 +73,11 @@ namespace QuantumBranching
             entangledPairs = pairs;
         }
 
+        public void ResolveRoomRoot()
+        {
+            TryAutoAssignRoomRoot();
+        }
+
         public void SetVisible(bool isVisible)
         {
             EnsureRuntimeBranchSetup();
@@ -61,7 +85,11 @@ namespace QuantumBranching
             if (roomRoot != null)
             {
                 roomRoot.SetActive(isVisible);
-                Debug.Log($"{nameof(BranchWorld)} {branchTitle} visibility set to {isVisible}.", this);
+                Debug.Log($"{nameof(BranchWorld)} {branchTitle} visibility set to {isVisible} on {roomRoot.name}.", this);
+            }
+            else
+            {
+                Debug.LogWarning($"{nameof(BranchWorld)} {branchTitle} has no room root to toggle.", this);
             }
 
             if (isVisible)
@@ -94,7 +122,10 @@ namespace QuantumBranching
 
             for (var index = 0; index < tintRenderers.Length; index++)
             {
-                tintRenderers[index].ApplyEmission(branchTint, 1.75f);
+                if (tintRenderers[index] != null)
+                {
+                    tintRenderers[index].ApplyEmission(branchTint, 1.5f);
+                }
             }
 
             for (var index = 0; index < entangledPairs.Length; index++)
@@ -118,7 +149,7 @@ namespace QuantumBranching
             {
                 if (!warnedAboutMissingRoomRoot)
                 {
-                    Debug.LogWarning($"{nameof(BranchWorld)} {name} could not find a room root for {branchId}.", this);
+                    Debug.LogWarning($"{nameof(BranchWorld)} {name} could not find a room root for {branchId}. Expected {ExpectedRoomName}.", this);
                     warnedAboutMissingRoomRoot = true;
                 }
 
@@ -172,22 +203,21 @@ namespace QuantumBranching
 
             var coreAnchor = EnsureChild(branchDisplay, "CoreAnchor", new Vector3(0f, 1.2f, 0f));
             var monitorAnchor = EnsureChild(branchDisplay, "MonitorAnchor", new Vector3(1.35f, 1.05f, -0.75f));
-            var coreLight = EnsureLight(branchDisplay, "CoreSignalLight", coreAnchor.localPosition, branchTint, 1.7f, 3.2f);
-            var monitorLight = EnsureLight(branchDisplay, "MonitorSignalLight", monitorAnchor.localPosition + new Vector3(0f, 0.1f, 0f), branchTint, 1.3f, 2.5f);
-
+            var monitorLabel = EnsureMonitorLabel(monitorAnchor);
             var visuals = BuildOutcomeVisuals(coreAnchor, monitorAnchor);
+
             var state = new EntanglementVisualState
             {
                 outcome = outcomeType,
                 primaryObjects = visuals.PrimaryObjects,
                 secondaryObjects = visuals.SecondaryObjects,
                 tintRenderers = visuals.Renderers,
-                tintLights = new[] { coreLight, monitorLight },
+                tintLights = new Light[0],
                 monitorText = GetMonitorText(),
                 signalColor = branchTint
             };
 
-            pair.Configure(coreAnchor, monitorAnchor, null, null, null, GetRuleText(), new[] { state });
+            pair.Configure(coreAnchor, monitorAnchor, monitorLabel, null, null, GetRuleText(), new[] { state });
             entangledPairs = new[] { pair };
             tintRenderers = visuals.Renderers;
 
@@ -233,19 +263,37 @@ namespace QuantumBranching
                 return;
             }
 
-            var roomName = branchId switch
-            {
-                BranchID.Branch01 => "Room02",
-                BranchID.Branch02 => "Room03",
-                BranchID.Branch03 => "Room04",
-                _ => "Room05"
-            };
-
-            roomRoot = GameObject.Find(roomName);
+            roomRoot = FindSceneObjectByName(ExpectedRoomName);
             if (roomRoot != null)
             {
-                Debug.Log($"{nameof(BranchWorld)} auto-assigned {roomName} to {branchTitle}.", this);
+                Debug.Log($"{nameof(BranchWorld)} auto-assigned {roomRoot.name} to {branchTitle}.", this);
             }
+        }
+
+        private static GameObject FindSceneObjectByName(string targetName)
+        {
+            var activeObject = GameObject.Find(targetName);
+            if (activeObject != null)
+            {
+                return activeObject;
+            }
+
+            var allTransforms = Resources.FindObjectsOfTypeAll<Transform>();
+            for (var index = 0; index < allTransforms.Length; index++)
+            {
+                var current = allTransforms[index];
+                if (current == null || current.name != targetName)
+                {
+                    continue;
+                }
+
+                if (current.gameObject.scene.IsValid())
+                {
+                    return current.gameObject;
+                }
+            }
+
+            return null;
         }
 
         private OutcomeVisuals BuildOutcomeVisuals(Transform coreAnchor, Transform monitorAnchor)
@@ -258,10 +306,7 @@ namespace QuantumBranching
                         {
                             CreateVisualPrimitive(PrimitiveType.Sphere, "StableCore", coreAnchor, Vector3.zero, Vector3.zero, new Vector3(0.5f, 0.5f, 0.5f))
                         },
-                        new[]
-                        {
-                            CreateVisualPrimitive(PrimitiveType.Cube, "StableMonitor", monitorAnchor, Vector3.zero, Vector3.zero, new Vector3(0.45f, 0.28f, 0.08f))
-                        });
+                        CreateMonitorStand(monitorAnchor, "StableMonitor"));
 
                 case BranchOutcomeType.Destabilized:
                     return new OutcomeVisuals(
@@ -270,10 +315,7 @@ namespace QuantumBranching
                             CreateVisualPrimitive(PrimitiveType.Capsule, "UnstableCore", coreAnchor, Vector3.zero, new Vector3(18f, 20f, 42f), new Vector3(0.38f, 0.72f, 0.38f)),
                             CreateVisualPrimitive(PrimitiveType.Cube, "GlitchFragment", coreAnchor, new Vector3(0.25f, 0.15f, 0f), new Vector3(20f, 15f, 35f), new Vector3(0.1f, 0.1f, 0.1f))
                         },
-                        new[]
-                        {
-                            CreateVisualPrimitive(PrimitiveType.Cube, "WarningMonitor", monitorAnchor, Vector3.zero, new Vector3(0f, 0f, 5f), new Vector3(0.45f, 0.28f, 0.08f))
-                        });
+                        CreateMonitorStand(monitorAnchor, "WarningMonitor"));
 
                 case BranchOutcomeType.Duplicated:
                     return new OutcomeVisuals(
@@ -282,11 +324,7 @@ namespace QuantumBranching
                             CreateVisualPrimitive(PrimitiveType.Sphere, "DuplicateCore_A", coreAnchor, new Vector3(-0.26f, 0f, 0f), Vector3.zero, new Vector3(0.38f, 0.38f, 0.38f)),
                             CreateVisualPrimitive(PrimitiveType.Sphere, "DuplicateCore_B", coreAnchor, new Vector3(0.26f, 0f, 0f), Vector3.zero, new Vector3(0.38f, 0.38f, 0.38f))
                         },
-                        new[]
-                        {
-                            CreateVisualPrimitive(PrimitiveType.Cube, "DualMonitor_A", monitorAnchor, new Vector3(-0.14f, 0f, 0f), Vector3.zero, new Vector3(0.22f, 0.24f, 0.08f)),
-                            CreateVisualPrimitive(PrimitiveType.Cube, "DualMonitor_B", monitorAnchor, new Vector3(0.14f, 0f, 0f), Vector3.zero, new Vector3(0.22f, 0.24f, 0.08f))
-                        });
+                        CreateMonitorStand(monitorAnchor, "DualMonitor"));
 
                 default:
                     return new OutcomeVisuals(
@@ -294,10 +332,7 @@ namespace QuantumBranching
                         {
                             CreateVisualPrimitive(PrimitiveType.Cylinder, "NullField", coreAnchor, new Vector3(0f, -0.2f, 0f), Vector3.zero, new Vector3(0.65f, 0.03f, 0.65f))
                         },
-                        new[]
-                        {
-                            CreateVisualPrimitive(PrimitiveType.Cube, "NullMonitor", monitorAnchor, Vector3.zero, Vector3.zero, new Vector3(0.45f, 0.28f, 0.08f))
-                        });
+                        CreateMonitorStand(monitorAnchor, "NullMonitor"));
             }
         }
 
@@ -316,11 +351,47 @@ namespace QuantumBranching
         {
             return outcomeType switch
             {
-                BranchOutcomeType.Stabilized => "Signal stable",
-                BranchOutcomeType.Destabilized => "Signal fault",
-                BranchOutcomeType.Duplicated => "Dual signal",
-                _ => "Signal null"
+                BranchOutcomeType.Stabilized => "STABLE",
+                BranchOutcomeType.Destabilized => "FAULT",
+                BranchOutcomeType.Duplicated => "DUAL",
+                _ => "NULL"
             };
+        }
+
+        private GameObject[] CreateMonitorStand(Transform monitorAnchor, string namePrefix)
+        {
+            return new[]
+            {
+                CreateVisualPrimitive(PrimitiveType.Cube, $"{namePrefix}_Body", monitorAnchor, new Vector3(0f, -0.02f, 0f), Vector3.zero, new Vector3(0.62f, 0.4f, 0.08f)),
+                CreateVisualPrimitive(PrimitiveType.Cube, $"{namePrefix}_Stem", monitorAnchor, new Vector3(0f, -0.28f, 0f), Vector3.zero, new Vector3(0.08f, 0.18f, 0.08f)),
+                CreateVisualPrimitive(PrimitiveType.Cube, $"{namePrefix}_Base", monitorAnchor, new Vector3(0f, -0.38f, 0f), Vector3.zero, new Vector3(0.24f, 0.04f, 0.18f))
+            };
+        }
+
+        private TextMesh EnsureMonitorLabel(Transform monitorAnchor)
+        {
+            var labelTransform = monitorAnchor.Find("MonitorLabel");
+            if (labelTransform == null)
+            {
+                labelTransform = new GameObject("MonitorLabel").transform;
+                labelTransform.SetParent(monitorAnchor, false);
+                labelTransform.localPosition = new Vector3(0f, 0f, -0.05f);
+                labelTransform.localRotation = Quaternion.identity;
+            }
+
+            var label = labelTransform.GetComponent<TextMesh>();
+            if (label == null)
+            {
+                label = labelTransform.gameObject.AddComponent<TextMesh>();
+            }
+
+            label.text = GetMonitorText();
+            label.characterSize = 0.05f;
+            label.fontSize = 42;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.color = branchTint;
+            return label;
         }
 
         private GameObject CreateVisualPrimitive(
@@ -368,41 +439,6 @@ namespace QuantumBranching
             return child;
         }
 
-        private static Light EnsureLight(
-            Transform parent,
-            string name,
-            Vector3 localPosition,
-            Color color,
-            float intensity,
-            float range)
-        {
-            var existing = parent.Find(name);
-            Light light = null;
-            if (existing != null)
-            {
-                light = existing.GetComponent<Light>();
-            }
-
-            if (light == null)
-            {
-                var lightObject = existing != null ? existing.gameObject : new GameObject(name);
-                lightObject.transform.SetParent(parent, false);
-                lightObject.transform.localPosition = localPosition;
-                lightObject.transform.localRotation = Quaternion.identity;
-                light = lightObject.GetComponent<Light>();
-                if (light == null)
-                {
-                    light = lightObject.AddComponent<Light>();
-                }
-            }
-
-            light.type = LightType.Point;
-            light.color = color;
-            light.intensity = intensity;
-            light.range = range;
-            return light;
-        }
-
         private readonly struct OutcomeVisuals
         {
             public OutcomeVisuals(GameObject[] primaryObjects, GameObject[] secondaryObjects)
@@ -429,4 +465,3 @@ namespace QuantumBranching
         }
     }
 }
-
